@@ -11,24 +11,24 @@ import pandas as pd
 
 from enum import Enum
 class Period(Enum):
-    YEAR = 0
-    QUARTER = 1
+    YEAR = 0 # 연간
+    QUARTER = 1 # 분기
 
 class DataType(Enum):
-    FS = 0
-    IV = 1
+    FS = 0 # 재무제표
+    IV = 1 # 투자지표
 
 class FSType(Enum):
-    IS = 0
-    BS = 1
-    CF = 2
+    IS = 0 # 손익계산서
+    BS = 1 # 재무상태표
+    CF = 2 # 현금흐름표
 
 class IVType(Enum):
-    PROFIT = 1
-    GROWTH = 2
-    STABILITY = 3
-    ACTIVITY = 4
-    VALUEABLE = 5
+    PROFIT = 1 # 수익성
+    GROWTH = 2 # 성장성
+    STABILITY = 3 # 안정성
+    ACTIVITY = 4 # 활동성
+    VALUEABLE = 5 # 가치지표
 
 def _get_nfn_page_name(type: DataType) -> str:
     return 'c1030001' if type == DataType.FS else 'c1040001'
