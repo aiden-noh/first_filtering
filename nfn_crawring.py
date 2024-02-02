@@ -1,6 +1,8 @@
 import re
-import time
 import json
+import time
+from datetime import date
+from dateutil.relativedelta import relativedelta
 import requests
 import pandas as pd
 
@@ -52,7 +54,7 @@ def _get_api_url(stock_code: str, type: DataType, subType: FSType|IVType, period
 #     rpt = ivType.value
 #     return f'https://navercomp.wisereport.co.kr/v2/company/{api_nm}.aspx?cmp_cd={stock_code}&frq={frq}&rpt={rpt}&finGubun=MAIN&frqTyp={frq}&cn='
 
-def _get_headers(stock_code, type: DataType) -> dict:
+def _get_headers(stock_code: str, type: DataType) -> dict:
     referer = _get_encparam_url(stock_code, type)
     headers = {
         'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -88,7 +90,7 @@ def _get_encparam(stock_code, type: DataType) -> str:
         print("매치되는 문자열을 찾을 수 없습니다.")
         return ''
 
-def crawl_nfn(stock_code, type: DataType, subType: FSType|IVType, period: Period) -> pd.DataFrame:
+def crawl_nfn(stock_code: str, type: DataType, subType: FSType|IVType, period: Period) -> pd.DataFrame:
     headers = _get_headers(stock_code, type)
     encparam = _get_encparam(stock_code, type)
     url = f'{_get_api_url(stock_code, type, subType, period)}&encparam={encparam}'
@@ -105,9 +107,42 @@ def crawl_nfn(stock_code, type: DataType, subType: FSType|IVType, period: Period
     df = df[extract_columns]
     df.columns = renamed_columns
 
+    # LG에너지솔루션 같이 상장한 지 얼마 안된 기업들에서 최근 5년 내 데이터가 비어있는 경우가 있음
+    # 특정 컬럼(연도나 분기)의 모든 값이 비어있는 경우는 데이터 drop
+    df = df.dropna(axis=1, how='all')
+
     time.sleep(0.5)
 
     return df
+
+def crawl_corp_info(stock_code: str, corp_name: str) -> pd.DataFrame:
+    url = f'https://comp.fnguide.com/SVO2/asp/SVD_Main.asp?gicode=A{stock_code}'
+    res = requests.get(url)
+
+    time.sleep(1)
+    df = pd.read_html(res.text)[0].dropna()
+    df1 = df.iloc[:, :2]
+    df2 = df.iloc[:, -2:]
+    df1.columns = ['item', 'amount']
+    df2.columns = ['item', 'amount']
+    df = pd.concat([df1, df2]).reset_index(drop=True)
+
+    parsed_list = []
+    parsed_list.append(['시가총액(보통주)', df.query('item == "시가총액(보통주,억원)"')['amount'].values[0]])
+    parsed_list.append(['시가총액(상장예정포함)', df.query('item == "시가총액(상장예정포함,억원)"')['amount'].values[0]])
+    parsed_list.append(['종가', df.query('item == "종가/ 전일대비"')['amount'].values[0].split('/')[0].strip()])
+    parsed_list.append(['발행주식수(보통주)', df.query('item == "발행주식수(보통주/ 우선주)"')['amount'].values[0].split('/')[0].strip()])
+    parsed_list.append(['발행주식수(우선주)', df.query('item == "발행주식수(보통주/ 우선주)"')['amount'].values[0].split('/')[1].strip()])
+    parsed_list.append(['유동주식수', df.query('item == "유동주식수/비율(보통주)"')['amount'].values[0].split('/')[0].strip()])
+    parsed_list.append(['유동주식비율', df.query('item == "유동주식수/비율(보통주)"')['amount'].values[0].split('/')[1].strip()])
+
+    df = pd.DataFrame(parsed_list, columns=['account_nm', 'amount'])
+    df['stock_code'] = stock_code
+    df['corp_name'] = corp_name
+    df['date'] = date.today() - relativedelta(days=1)
+    df['amount'] = pd.to_numeric(df['amount'].str.replace(',', ''))
+
+    return df[['stock_code', 'corp_name', 'date', 'account_nm', 'amount']]
 
 def crawl_nfn_fs(stock_code, type=0, frq=0):
     # type: 0-재무제표, 1-투자지표

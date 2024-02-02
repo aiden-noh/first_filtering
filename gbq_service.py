@@ -21,14 +21,13 @@ def _convert(crawring_df: pd.DataFrame,
     df['stock_code'] = stock_code
     df['corp_name'] = corp_name
     df['type'] = type
-    df['updated'] = datetime.now()
 
     # 연, 분기 데이터 세팅
-    df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type', 'updated']
+    df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type']
     df['year'] = df.date.str.split('/').str[0].astype(int)
 
     # 컬럼 정리
-    df = df[['stock_code', 'corp_name', 'year', 'type', 'order', 'account_name', 'amount', 'updated']]
+    df = df[['stock_code', 'corp_name', 'year', 'type', 'order', 'account_name', 'amount']]
 
     # id 생성
     df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
@@ -52,15 +51,14 @@ def _convert_q(crawring_df: pd.DataFrame,
     df['stock_code'] = stock_code
     df['corp_name'] = corp_name
     df['type'] = type
-    df['updated'] = datetime.now()
 
     # 연, 분기 데이터 세팅
-    df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type', 'updated']
+    df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type']
     df['year'] = df.date.str.split('/').str[0].astype(int)
     df['quarter'] = np.ceil(df.date.str.split('/').str[1].astype(int) / 3).astype(int)
 
     # 컬럼 정리
-    df = df[['stock_code', 'corp_name', 'year', 'quarter', 'type', 'order', 'account_name', 'amount', 'updated']]
+    df = df[['stock_code', 'corp_name', 'year', 'quarter', 'type', 'order', 'account_name', 'amount']]
 
     # id 생성
     df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.quarter.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
@@ -70,7 +68,7 @@ def _convert_q(crawring_df: pd.DataFrame,
 
 def _clean_exist(df: pd.DataFrame):
     delete_sql = f"""
-        DELETE FROM `hello-phase3.naver_fn_data.test_income_statement_year`
+        DELETE FROM `hello-phase3.naver_fn_data.financial_statements_year`
         WHERE id IN {str(tuple(df.index.tolist()))}
     """
 
@@ -89,25 +87,50 @@ def _upload(df: pd.DataFrame, table_name: str):
         # ]
     # )
 
+    df['updated_at'] = datetime.now()
     job = client.load_table_from_dataframe(df, table_id)  # Make an API request.
-    print(job.result())  # Wait for the job to complete.
+    print(job.result(), '\nUploaded: ', len(df))  # Wait for the job to complete.
 
-# 연간
-def upload_crawring_to_gbq(crawring_df: pd.DataFrame,
-                           stock_code: str,
-                           corp_name: str,
-                           type: str):
+def get_krx_list():
+    query = """
+        SELECT * FROM `hello-phase3.naver_fn_data.test_krx_list`
+    """
+    df = client.query(query).to_dataframe()
+    return df
+
+#########################################
+
+def convert_gbq_year(crawring_df: pd.DataFrame,
+                     stock_code: str,
+                     corp_name: str,
+                     type: str) -> pd.DataFrame:
 
     df = _convert(crawring_df, stock_code, corp_name, type)
-    _clean_exist(df)
-    _upload(df, 'test_income_statement_year')
+    return df
 
-# 분기
-def upload_crawring_to_gbq_q(crawring_df: pd.DataFrame,
-                             stock_code: str,
-                             corp_name: str,
-                             type: str):
+def convert_gbq_quarter(crawring_df: pd.DataFrame,
+                        stock_code: str,
+                        corp_name: str,
+                        type: str) -> pd.DataFrame:
 
     df = _convert_q(crawring_df, stock_code, corp_name, type)
-    _clean_exist(df)
-    _upload(df, 'test_income_statement_quarter')
+    return df
+
+# 연간 재무제표
+def load_to_fs_year(df: pd.DataFrame):
+    _upload(df, 'financial_statements_year')
+
+# 분기 재무제표
+def load_to_fs_quarter(df: pd.DataFrame):
+    _upload(df, 'financial_statements_quarter')
+
+# 연간 투자지표
+def load_to_iv_year(df: pd.DataFrame):
+    _upload(df, 'investment_index_year')
+
+# 분기 투자지표
+def load_to_iv_quarter(df: pd.DataFrame):
+    _upload(df, 'investment_index_quarter')
+
+def load_to_stock_info(df: pd.DataFrame):
+    _upload(df, 'stock_info')
