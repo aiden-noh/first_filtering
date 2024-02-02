@@ -25,12 +25,13 @@ def _convert(crawring_df: pd.DataFrame,
     # 연, 분기 데이터 세팅
     df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type']
     df['year'] = df.date.str.split('/').str[0].astype(int)
+    df['month'] = df.date.str.split('/').str[1].astype(int)
 
     # 컬럼 정리
-    df = df[['stock_code', 'corp_name', 'year', 'type', 'order', 'account_name', 'amount']]
+    df = df[['stock_code', 'corp_name', 'year', 'month', 'type', 'order', 'account_name', 'amount']]
 
     # id 생성
-    df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
+    df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.month.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
     df.index.name = 'id'
 
     return df
@@ -55,13 +56,14 @@ def _convert_q(crawring_df: pd.DataFrame,
     # 연, 분기 데이터 세팅
     df.columns = ['order', 'account_name', 'date', 'amount', 'stock_code', 'corp_name', 'type']
     df['year'] = df.date.str.split('/').str[0].astype(int)
+    df['month'] = df.date.str.split('/').str[1].astype(int)
     df['quarter'] = np.ceil(df.date.str.split('/').str[1].astype(int) / 3).astype(int)
 
     # 컬럼 정리
-    df = df[['stock_code', 'corp_name', 'year', 'quarter', 'type', 'order', 'account_name', 'amount']]
+    df = df[['stock_code', 'corp_name', 'year', 'month', 'quarter', 'type', 'order', 'account_name', 'amount']]
 
     # id 생성
-    df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.quarter.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
+    df.index = df.stock_code + '_' + df.year.astype(str) + '_' + df.month.astype(str) + '_' + df.quarter.astype(str) + '_' + df.type + '_' + df.order.astype(str).str.zfill(3)
     df.index.name = 'id'
 
     return df
