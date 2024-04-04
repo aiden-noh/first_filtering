@@ -68,15 +68,15 @@ def _convert_q(crawring_df: pd.DataFrame,
 
     return df
 
-def _clean_exist(df: pd.DataFrame):
-    delete_sql = f"""
-        DELETE FROM `hello-phase3.naver_fn_data.financial_statements_year`
-        WHERE id IN {str(tuple(df.index.tolist()))}
-    """
+# def _clean_exist(df: pd.DataFrame):
+#     delete_sql = f"""
+#         DELETE FROM `hello-phase3.naver_fn_data.financial_statements_year`
+#         WHERE id IN {str(tuple(df.index.tolist()))}
+#     """
 
-    # SQL 쿼리 실행
-    job = client.query(delete_sql)
-    print(job.result())
+#     # SQL 쿼리 실행
+#     job = client.query(delete_sql)
+#     print(job.result())
 
 def _upload(df: pd.DataFrame, table_name: str):
     table_id = f'hello-phase3.naver_fn_data.{table_name}'
@@ -93,14 +93,16 @@ def _upload(df: pd.DataFrame, table_name: str):
     job = client.load_table_from_dataframe(df, table_id)  # Make an API request.
     print(job.result(), '\nUploaded: ', len(df))  # Wait for the job to complete.
 
+#########################################
+
 def get_krx_list():
     query = """
-        SELECT * FROM `hello-phase3.naver_fn_data.test_krx_list`
+        SELECT *
+        FROM `hello-phase3.naver_fn_data.krx_list`
+        WHERE updated_date = (SELECT MAX(updated_date) FROM `hello-phase3.naver_fn_data.krx_list`)
     """
     df = client.query(query).to_dataframe()
     return df
-
-#########################################
 
 def convert_gbq_year(crawring_df: pd.DataFrame,
                      stock_code: str,
@@ -134,5 +136,5 @@ def load_to_iv_year(df: pd.DataFrame):
 def load_to_iv_quarter(df: pd.DataFrame):
     _upload(df, 'investment_index_quarter')
 
-def load_to_stock_info(df: pd.DataFrame):
-    _upload(df, 'stock_info')
+# def load_to_stock_info(df: pd.DataFrame):
+#     _upload(df, 'stock_info')
